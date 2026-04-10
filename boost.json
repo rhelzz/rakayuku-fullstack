@@ -1,0 +1,14 @@
+{
+    "agents": [
+        "copilot"
+    ],
+    "guidelines": true,
+    "skills": [
+        "laravel-best-practices",
+        "wayfinder-development",
+        "inertia-vue-development",
+        "tailwindcss-development",
+        "laravel-specialist",
+        "php-pro"
+    ]
+}
