@@ -2,31 +2,97 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'role',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
+    }
+
+    public function hasRole(UserRole|string ...$roles): bool
+    {
+        $roleValues = array_map(
+            fn ($r) => $r instanceof UserRole ? $r->value : $r,
+            $roles
+        );
+
+        $userRole = $this->role instanceof UserRole
+            ? $this->role->value
+            : $this->role;
+
+        return in_array($userRole, $roleValues, strict: true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(UserRole::Admin);
+    }
+
+    public function isFinance(): bool
+    {
+        return $this->hasRole(UserRole::Finance);
+    }
+
+    public function isWarehouse(): bool
+    {
+        return $this->hasRole(UserRole::Warehouse);
+    }
+
+    public function isHr(): bool
+    {
+        return $this->hasRole(UserRole::Hr);
+    }
+
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrder::class, 'created_by');
+    }
+
+    public function inventoryTransactions()
+    {
+        return $this->hasMany(InventoryTransaction::class, 'created_by');
+    }
+
+    public function kasbonTransactions()
+    {
+        return $this->hasMany(KasbonTransaction::class, 'created_by');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'created_by');
+    }
+
+    public function invoicePayments()
+    {
+        return $this->hasMany(InvoicePayment::class, 'created_by');
+    }
+
+    public function financialTransactions()
+    {
+        return $this->hasMany(FinancialTransaction::class, 'created_by');
     }
 }
