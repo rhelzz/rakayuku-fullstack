@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -66,32 +68,32 @@ class User extends Authenticatable
         return $this->hasRole(UserRole::Hr);
     }
 
-    public function purchaseOrders()
+    public function purchaseOrders(): HasMany
     {
         return $this->hasMany(PurchaseOrder::class, 'created_by');
     }
 
-    public function inventoryTransactions()
+    public function inventoryTransactions(): HasMany
     {
         return $this->hasMany(InventoryTransaction::class, 'created_by');
     }
 
-    public function kasbonTransactions()
+    public function kasbonTransactions(): HasMany
     {
         return $this->hasMany(KasbonTransaction::class, 'created_by');
     }
 
-    public function invoices()
+    public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class, 'created_by');
     }
 
-    public function invoicePayments()
+    public function invoicePayments(): HasMany
     {
         return $this->hasMany(InvoicePayment::class, 'created_by');
     }
 
-    public function financialTransactions()
+    public function financialTransactions(): HasMany
     {
         return $this->hasMany(FinancialTransaction::class, 'created_by');
     }
