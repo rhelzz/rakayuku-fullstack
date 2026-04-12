@@ -6,17 +6,19 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Actions\Auth\AuthenticateUserAction;
 use App\Actions\Auth\IssueApiTokenAction;
+use App\Http\Controllers\Api\Concerns\RespondsWithApiJson;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Resources\Auth\AuthUserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthenticatedSessionController extends Controller
 {
+    use RespondsWithApiJson;
+
     public function store(
         LoginRequest $request,
         AuthenticateUserAction $authenticateUserAction,
@@ -31,21 +33,29 @@ class AuthenticatedSessionController extends Controller
         );
 
         if (! $user instanceof User) {
-            throw ValidationException::withMessages([
-                'email' => [trans('auth.failed')],
-            ]);
+            return $this->error(
+                request: $request,
+                message: trans('auth.failed'),
+                errors: [
+                    'email' => [trans('auth.failed')],
+                ],
+                status: 401,
+            );
         }
 
         $user->tokens()->where('name', $deviceName)->delete();
 
         $token = $issueApiTokenAction->handle($user, $deviceName);
 
-        return response()->json([
-            'message' => 'Login successful.',
-            'user' => new AuthUserResource($user),
-            'token' => $token,
-            'token_type' => 'Bearer',
-        ]);
+        return $this->success(
+            request: $request,
+            message: 'Login successful.',
+            data: [
+                'user' => new AuthUserResource($user),
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ],
+        );
     }
 
     public function destroy(Request $request): JsonResponse
@@ -53,7 +63,11 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if (! $user instanceof User) {
-            abort(401);
+            return $this->error(
+                request: $request,
+                message: 'Unauthorized.',
+                status: 401,
+            );
         }
 
         $accessToken = $user->currentAccessToken();
@@ -62,9 +76,13 @@ class AuthenticatedSessionController extends Controller
             $accessToken->delete();
         }
 
-        return response()->json([
-            'message' => 'Logout successful.',
-        ]);
+        return $this->success(
+            request: $request,
+            message: 'Logout successful.',
+            data: [
+                'revoked' => true,
+            ],
+        );
     }
 
     public function destroyAll(Request $request): JsonResponse
@@ -72,14 +90,22 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if (! $user instanceof User) {
-            abort(401);
+            return $this->error(
+                request: $request,
+                message: 'Unauthorized.',
+                status: 401,
+            );
         }
 
         $user->tokens()->delete();
 
-        return response()->json([
-            'message' => 'All tokens revoked successfully.',
-        ]);
+        return $this->success(
+            request: $request,
+            message: 'All tokens revoked successfully.',
+            data: [
+                'revoked_all' => true,
+            ],
+        );
     }
 
     private function resolveDeviceName(array $payload): string

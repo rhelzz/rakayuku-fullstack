@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Api\Auth\CurrentUserController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('auth')->name('auth.')->group(function (): void {
+Route::prefix('v1/auth')->name('auth.')->group(function (): void {
     Route::post('login', [AuthenticatedSessionController::class, 'store'])
         ->middleware('throttle:api-login')
         ->name('login');

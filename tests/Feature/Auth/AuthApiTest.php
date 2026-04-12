@@ -22,13 +22,15 @@ class AuthApiTest extends TestCase
             'role' => UserRole::Finance,
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'john@example.com',
             'password' => 'WrongPass!123',
         ]);
 
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['email']);
+        $response->assertUnauthorized()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', trans('auth.failed'))
+            ->assertJsonPath('errors.email.0', trans('auth.failed'));
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
@@ -41,21 +43,29 @@ class AuthApiTest extends TestCase
             'role' => UserRole::Finance,
         ]);
 
-        $loginResponse = $this->postJson('/api/auth/login', [
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
             'email' => 'john@example.com',
             'password' => 'ValidPass!123',
         ]);
 
-        $loginResponse->assertOk();
+        $loginResponse->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Login successful.')
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonPath('data.user.email', $user->email)
+            ->assertJsonPath('data.user.role', UserRole::Finance->value)
+            ->assertJsonPath('data.token_type', 'Bearer');
 
-        $token = (string) $loginResponse->json('token');
+        $token = (string) $loginResponse->json('data.token');
 
-        $meResponse = $this->withToken($token)->getJson('/api/auth/me');
+        $meResponse = $this->withToken($token)->getJson('/api/v1/auth/me');
 
         $meResponse->assertOk()
-            ->assertJsonPath('data.id', $user->id)
-            ->assertJsonPath('data.email', $user->email)
-            ->assertJsonPath('data.role', UserRole::Finance->value);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Authenticated user retrieved successfully.')
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonPath('data.user.email', $user->email)
+            ->assertJsonPath('data.user.role', UserRole::Finance->value);
     }
 
     public function test_login_is_rate_limited_after_multiple_failed_attempts(): void
@@ -67,16 +77,18 @@ class AuthApiTest extends TestCase
         ]);
 
         for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/auth/login', [
+            $this->postJson('/api/v1/auth/login', [
                 'email' => 'limited@example.com',
                 'password' => 'WrongPass!123',
-            ])->assertUnprocessable();
+            ])->assertUnauthorized();
         }
 
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/v1/auth/login', [
             'email' => 'limited@example.com',
             'password' => 'WrongPass!123',
-        ])->assertStatus(429);
+        ])->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.throttle.0', 'Rate limit exceeded.');
     }
 
     public function test_logout_revokes_only_current_token(): void
@@ -89,20 +101,24 @@ class AuthApiTest extends TestCase
         $tokenB = $user->createToken('device-b')->plainTextToken;
 
         $this->withToken($tokenA)
-            ->postJson('/api/auth/logout')
-            ->assertOk();
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.revoked', true);
 
         $this->assertDatabaseCount('personal_access_tokens', 1);
 
         $this->withToken($tokenB)
-            ->postJson('/api/auth/logout-all')
-            ->assertOk();
+            ->postJson('/api/v1/auth/logout-all')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.revoked_all', true);
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
     public function test_me_endpoint_requires_authentication(): void
     {
-        $this->getJson('/api/auth/me')->assertUnauthorized();
+        $this->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 }

@@ -52,7 +52,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)
                 ->by($email.'|'.$request->ip())
                 ->response(fn (): JsonResponse => response()->json([
+                    'success' => false,
                     'message' => 'Too many login attempts. Please try again in a minute.',
+                    'errors' => [
+                        'throttle' => ['Rate limit exceeded.'],
+                    ],
+                    'meta' => [
+                        'timestamp' => now()->toIso8601String(),
+                        'path' => '/'.$request->path(),
+                    ],
                 ], 429));
         });
     }
