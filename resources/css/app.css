@@ -5,7 +5,22 @@
 
 @theme inline {
     --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        Poppins, ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+}
+
+@layer base {
+    html,
+    body,
+    input,
+    textarea,
+    select,
+    button {
+        font-family: var(--font-sans);
+    }
+
+    ::placeholder {
+        font-family: var(--font-sans);
+    }
 }
